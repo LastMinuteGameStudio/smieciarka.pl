@@ -86,7 +86,7 @@ Użytkownik może mieć wiele filtrów, każdy z innym obszarem, np. „meble do
 | Embeddingi      | **BGE-M3** lub **multilingual-e5-large** (self-hosted) albo API (np. OpenAI `text-embedding-3-small`) | Modele wielojęzyczne dobrze radzące sobie z polskim                     |
 | Opis zdjęć      | Model vision (LLM multimodalny)                                                                       | Generuje opis tekstowy zdjęcia, gdy użytkownik nie dodał opisu          |
 | Powiadomienia   | **Firebase Cloud Messaging** + Web Push                                                               | Android, iOS i przeglądarka                                             |
-| SMS / OTP       | Brama SMS (np. Twilio, SMSAPI.pl)                                                                     | Wysyłka kodów weryfikacyjnych przy logowaniu przez numer telefonu       |
+| SMS / OTP       | **textbee.dev** (demo/pilot) → **SMSAPI.pl** (produkcja)                                              | Wysyłka kodów weryfikacyjnych przy logowaniu przez numer telefonu. textbee: darmowy tier 300 SMS/mies. przez telefon Android zespołu, bez karty — dobry na demo i mały pilot. SMSAPI.pl: po rejestracji fundacji jako podmiotu, do skalowania (brama produkcyjna, nie telefon-jako-SIM) |
 | Migracje / ORM  | **SQLAlchemy 2.0 + Alembic**                                                                          |                                                                         |
 | Infrastruktura  | **Docker Compose** (dev), kontenery na produkcji                                                      |                                                                         |
 
@@ -610,6 +610,8 @@ celery -A app.workers.celery_app worker -B --loglevel=info
 ```
 
 > **Dev mode OTP:** lokalnie, gdy `SMS_PROVIDER_API_KEY` nie jest ustawiony, kod OTP jest logowany do konsoli/logów workera zamiast wysyłany SMS-em — bez tego każdy test logowania kosztowałby prawdziwy SMS.
+>
+> **Demo / mały pilot:** jako `SMS_PROVIDER` ustaw [textbee.dev](https://textbee.dev) — darmowy tier 300 SMS/mies. (limit 50/dzień), bez karty, wysyłka przez telefon Android zespołu podłączony jako brama. Wystarczające na demo i testy z mniejszą grupą. Przy realnym skalowaniu z fundacją przejść na SMSAPI.pl (wymaga rejestracji fundacji jako podmiotu, prawdziwa brama produkcyjna, nie zależna od jednego telefonu).
 
 Najważniejsze zmienne środowiskowe:
 
