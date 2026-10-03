@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -11,21 +11,14 @@ from app.db import get_db
 from app.models import Listing, ListingStatus, User
 from app.schemas.listing import ListingCreate, ListingOut, ListingStatusUpdate
 from app.services.embeddings import embed_passage, embed_query
+from app.services.geo import distance_m_expr
+from app.services.matching import match_listing_to_filters
 
 router = APIRouter()
 
 
 def _distance_m(lat: float, lng: float):
-    cos_central_angle = func.least(
-        1.0,
-        func.greatest(
-            -1.0,
-            func.cos(func.radians(lat)) * func.cos(func.radians(Listing.lat))
-            * func.cos(func.radians(Listing.lng) - func.radians(lng))
-            + func.sin(func.radians(lat)) * func.sin(func.radians(Listing.lat)),
-        ),
-    )
-    return 6371000 * func.acos(cos_central_angle)
+    return distance_m_expr(lat, lng, Listing.lat, Listing.lng)
 
 
 @router.post("/listings", response_model=ListingOut, status_code=status.HTTP_201_CREATED)
@@ -51,6 +44,9 @@ async def create_listing(
     db.add(listing)
     await db.commit()
     await db.refresh(listing)
+
+    await match_listing_to_filters(listing, db)
+
     return listing
 
 
