@@ -37,7 +37,18 @@ def _embed_local_sync(text: str) -> list[float]:
 
 
 def _use_jina() -> bool:
-    return settings.embedding_provider == "jina" and jina.is_configured()
+    if settings.embedding_provider != "jina":
+        return False
+    if not jina.is_configured():
+        # Falling back silently would emit 384-dim vectors into a 1024-dim
+        # column and surface as an opaque pgvector dimension error on insert.
+        raise RuntimeError(
+            "EMBEDDING_PROVIDER=jina but JINA_API_KEY is empty. Set the key "
+            "(free: https://jina.ai/embeddings), or switch to the local model "
+            "with EMBEDDING_PROVIDER=fastembed + EMBEDDING_DIM=384 and run "
+            "'alembic downgrade f810b33664ea' to resize the vector columns."
+        )
+    return True
 
 
 async def embed_passage(text: str) -> list[float]:
