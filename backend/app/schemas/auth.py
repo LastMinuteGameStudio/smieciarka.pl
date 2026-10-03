@@ -1,16 +1,19 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+# E.164: leading +, country code, 7-14 more digits.
+E164_PATTERN = r"^\+[1-9]\d{7,14}$"
 
 
 class PhoneStartRequest(BaseModel):
-    phone_number: str
+    phone_number: str = Field(..., pattern=E164_PATTERN)
 
 
 class PhoneVerifyRequest(BaseModel):
-    phone_number: str
-    code: str
+    phone_number: str = Field(..., pattern=E164_PATTERN)
+    code: str = Field(..., pattern=r"^\d{6}$")
 
 
 class RefreshRequest(BaseModel):

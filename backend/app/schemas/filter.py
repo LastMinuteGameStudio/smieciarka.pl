@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.watch_filter import AreaType
 from app.schemas.listing import LocationIn
@@ -10,11 +10,11 @@ from app.schemas.listing import LocationIn
 class AreaIn(BaseModel):
     type: AreaType
     center: LocationIn | None = None
-    radius_m: int | None = None
+    radius_m: int | None = Field(None, ge=100, le=500_000)
 
 
 class FilterCreate(BaseModel):
-    query: str
+    query: str = Field(..., min_length=1, max_length=200)
     area: AreaIn
 
 
