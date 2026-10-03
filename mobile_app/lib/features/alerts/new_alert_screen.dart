@@ -60,6 +60,7 @@ class _NewAlertScreenState extends State<NewAlertScreen> {
                   minLines: 4,
                   maxLines: null,
                   keyboardType: TextInputType.multiline,
+                  maxLength: 200,
                   validator: (value) =>
                       _validateRequired(value, 'Opisz poszukiwany przedmiot'),
                 ),

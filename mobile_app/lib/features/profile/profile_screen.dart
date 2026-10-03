@@ -25,34 +25,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .showSnackBar(const SnackBar(content: Text('Zapisano zmiany')));
   }
 
-  Future<void> _confirmDeleteAccount() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Usunąć konto?'),
-        content: const Text('Tej operacji nie da się cofnąć.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Anuluj'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Usuń'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed ?? false) {
-      // TODO: delete the account on the backend.
-      if (!mounted) {
-        return;
-      }
-      context.go(AppRoutes.welcome);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -83,29 +55,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     labelText: 'Adres zamieszkania',
                   ),
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Link do profilu Facebook *',
-                    hintText: 'https://www.facebook.com/twoj.profil',
-                  ),
-                  keyboardType: TextInputType.url,
-                  validator: ContactValidators.facebookProfileUrl,
-                ),
                 const SizedBox(height: 32),
                 UCButton(label: 'Zapisz zmiany', onPressed: _save),
                 const SizedBox(height: 48),
                 UCButton(
                   label: 'Kup subskrypcję',
                   onPressed: () => context.push(AppRoutes.subscription),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: _confirmDeleteAccount,
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                  child: const Text('Usuń konto'),
                 ),
               ],
             ),

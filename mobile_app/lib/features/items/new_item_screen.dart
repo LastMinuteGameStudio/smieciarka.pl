@@ -56,6 +56,17 @@ class _NewItemScreenState extends State<NewItemScreen> {
                   validator: _validateName,
                 ),
                 const SizedBox(height: 16),
+                TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: 'Opis (opcjonalnie)',
+                    alignLabelWithHint: true,
+                  ),
+                  minLines: 3,
+                  maxLines: null,
+                  maxLength: 2000,
+                  keyboardType: TextInputType.multiline,
+                ),
+                const SizedBox(height: 16),
                 CityAutocompleteField(
                   onChanged: (city) => setState(() => _city = city),
                 ),
