@@ -153,6 +153,104 @@ dopasowania potrzebujesz dwóch numerów telefonu.
 
 ---
 
+## Zatrzymanie i sprzątanie
+
+Dwa różne cele: zrobić przerwę albo wrócić do stanu przed uruchomieniem.
+
+### Przerwa (dane zostają)
+
+Zatrzymaj uvicorn przez `Ctrl+C` w jego terminalu. Potem kontener:
+
+```bash
+docker compose stop
+```
+
+Powrót do pracy: `docker compose start` (albo `docker compose up -d`). Baza ma
+nadal zmigrowany schemat i wszystkie dane, więc migracji nie powtarzasz.
+
+### Czyszczenie samych danych
+
+Jeśli chcesz wyrzucić ogłoszenia i konta z testów, ale zachować schemat i venv:
+
+```bash
+docker compose exec postgres \
+  psql -U smieciarka -d smieciarka \
+  -c 'truncate notifications, watch_filters, listings, users cascade;'
+```
+
+Tabela `alembic_version` zostaje nietknięta, więc migracji też nie powtarzasz.
+Kody OTP i refresh tokeny trzyma proces API w pamięci, nie baza — zrestartuj
+uvicorn, jeśli chcesz unieważnić też sesje z testów.
+
+### Pełne usunięcie
+
+Poniższe kroki **bezpowrotnie usuwają bazę i wszystkie dane**. Nie ma kopii
+zapasowej i nie ma cofnięcia — wolumen `backend_pgdata` przestaje istnieć.
+Wykonaj je tylko wtedy, gdy naprawdę chcesz wrócić do stanu sprzed
+uruchomienia. Jeśli chodziło Ci jedynie o zatrzymanie serwera, użyj
+`docker compose stop` z sekcji powyżej.
+
+Kolejność ma znaczenie: najpierw zatrzymaj API, potem usuń kontener, na końcu
+pliki.
+
+**1. Zatrzymaj API.** `Ctrl+C` w terminalu z uvicornem. Jeśli uruchomiłeś go
+w tle, znajdź i zatrzymaj proces:
+
+```bash
+pgrep -af 'venv/bin/uvicorn'
+kill <PID>
+```
+
+Zatrzymanie procesu nadrzędnego (`--reload`) zabiera ze sobą workera.
+Sprawdzenie, że port jest wolny: `curl localhost:8000/health` ma zwrócić błąd
+połączenia.
+
+**2. Usuń kontener, sieć i wolumen.**
+
+```bash
+docker compose down -v
+```
+
+Flaga `-v` usuwa wolumen `backend_pgdata` razem z bazą. Bez niej wolumen
+zostaje i następne `up -d` wstanie ze starymi danymi. Samo `down` usuwa jeszcze
+sieć `backend_default`.
+
+**3. Usuń pliki wygenerowane lokalnie.**
+
+```bash
+rm -rf venv
+rm .env
+find . -name __pycache__ -type d -prune -exec rm -rf {} +
+```
+
+Wszystkie trzy są w `.gitignore`, więc repozytorium wygląda po tym tak jak po
+`git clone`. Sprawdź: `git status` ma nie pokazywać nic nowego.
+
+> `.env` zawiera Twoje klucze API. Jeśli nie chcesz wpisywać ich ponownie,
+> skopiuj go gdzieś przed usunięciem — ale poza katalog repozytorium, żeby nie
+> trafił przypadkiem do commita.
+
+**4. Opcjonalnie: obraz Dockera.** Zajmuje 631 MB. Usuwaj tylko, jeśli
+odzyskujesz miejsce — ponowne uruchomienie będzie musiało pobrać go na nowo:
+
+```bash
+docker image rm pgvector/pgvector:pg16
+```
+
+Nie uruchamiaj `docker system prune` ani `docker volume prune` zamiast
+powyższych komend. Te polecenia działają na całym demonie i usuwają także
+kontenery oraz wolumeny innych projektów.
+
+Na NixOS każdą komendę `docker` poprzedź `sg docker -c '...'`, jeśli bieżąca
+sesja nie ma jeszcze grupy `docker` — patrz
+[Dostęp do Dockera](#dostęp-do-dockera).
+
+Nowe uruchomienie od zera: wróć do
+[Uruchomienia krok po kroku](#uruchomienie-krok-po-kroku). Wszystkie pięć
+kroków jest znowu potrzebnych, łącznie z migracjami.
+
+---
+
 ## Dostępne endpointy
 
 Pełna, zawsze aktualna lista: `/docs`.
