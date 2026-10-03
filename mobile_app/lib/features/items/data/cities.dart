@@ -1,0 +1,21 @@
+// TODO: replace with the list served by the backend.
+const polishCities = [
+  'Białystok',
+  'Bydgoszcz',
+  'Gdańsk',
+  'Gdynia',
+  'Katowice',
+  'Kielce',
+  'Kraków',
+  'Lublin',
+  'Łódź',
+  'Olsztyn',
+  'Opole',
+  'Poznań',
+  'Rzeszów',
+  'Szczecin',
+  'Toruń',
+  'Warszawa',
+  'Wrocław',
+  'Zielona Góra',
+];

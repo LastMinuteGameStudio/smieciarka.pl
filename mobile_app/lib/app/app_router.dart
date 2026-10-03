@@ -8,7 +8,7 @@ import 'package:uczciwa_cena/features/items/item_screen.dart';
 import 'package:uczciwa_cena/features/items/items_screen.dart';
 import 'package:uczciwa_cena/features/items/new_item_screen.dart';
 import 'package:uczciwa_cena/features/profile/profile_screen.dart';
-import 'package:uczciwa_cena/features/subscription/subscription_screen.dart';
+import 'package:uczciwa_cena/features/subscription/buy_subscription_page.dart';
 import 'package:uczciwa_cena/features/welcome/welcome_screen.dart';
 import 'package:uczciwa_cena/models/alert.dart';
 import 'package:uczciwa_cena/models/item.dart';
@@ -17,14 +17,8 @@ import 'package:uczciwa_cena/shell/main_shell.dart';
 final GoRouter appRouter = GoRouter(
   initialLocation: AppRoutes.welcome,
   routes: [
-    GoRoute(
-      path: AppRoutes.welcome,
-      builder: (_, _) => const WelcomeScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.login,
-      builder: (_, _) => const LoginScreen(),
-    ),
+    GoRoute(path: AppRoutes.welcome, builder: (_, _) => const WelcomeScreen()),
+    GoRoute(path: AppRoutes.login, builder: (_, _) => const LoginScreen()),
     StatefulShellRoute.indexedStack(
       builder: (_, _, navigationShell) =>
           MainShell(navigationShell: navigationShell),
@@ -63,17 +57,14 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.alert,
       builder: (_, state) => AlertScreen(alert: state.extra as Alert),
     ),
-    GoRoute(
-      path: AppRoutes.newItem,
-      builder: (_, _) => const NewItemScreen(),
-    ),
+    GoRoute(path: AppRoutes.newItem, builder: (_, _) => const NewItemScreen()),
     GoRoute(
       path: AppRoutes.newAlert,
       builder: (_, _) => const NewAlertScreen(),
     ),
     GoRoute(
       path: AppRoutes.subscription,
-      builder: (_, _) => const SubscriptionScreen(),
+      builder: (_, _) => const BuySubscriptionPage(),
     ),
   ],
 );

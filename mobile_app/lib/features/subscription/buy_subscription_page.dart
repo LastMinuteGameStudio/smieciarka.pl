@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:uczciwa_cena/core/widgets/uc_page_header.dart';
-import 'package:uczciwa_cena/models/alert.dart';
 
-class AlertScreen extends StatelessWidget {
-  const AlertScreen({super.key, required this.alert});
-
-  final Alert alert;
+class BuySubscriptionPage extends StatelessWidget {
+  const BuySubscriptionPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,11 +12,7 @@ class AlertScreen extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const UCPageHeader(title: 'Opis alertu'),
-              const SizedBox(height: 24),
-              Center(child: Text('ID: ${alert.id}')),
-            ],
+            children: [const UCPageHeader(title: 'Subskrypcja')],
           ),
         ),
       ),
