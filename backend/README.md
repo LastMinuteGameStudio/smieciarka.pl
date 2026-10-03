@@ -18,10 +18,10 @@ opisuje wyłącznie uruchomienie.
 
 | Wymagane | Po co |
 | -------- | ----- |
-| Python 3.12+ | API (testowane na 3.13) |
-| Docker + Docker Compose | PostgreSQL z rozszerzeniem pgvector |
+| Docker + Docker Compose | PostgreSQL z pgvector, a w wariancie A także API |
 | `JINA_API_KEY` | embeddingi i reranker, darmowy tier: https://jina.ai/embeddings |
 | `GEMINI_API_KEY` | rozwijanie zapytań filtrów, darmowy tier: https://aistudio.google.com/apikey |
+| Python 3.12+ | tylko dla [wariantu B](#wariant-b-venv-na-hoście) (testowane na 3.13) |
 
 Oba klucze są darmowe i nie wymagają karty. Rejestracja zajmuje minutę.
 
@@ -29,14 +29,21 @@ Oba klucze są darmowe i nie wymagają karty. Rejestracja zajmuje minutę.
 nie działa — nie jest to opcjonalne ulepszenie, patrz
 [Dlaczego potrzebne są klucze](#dlaczego-potrzebne-są-klucze).
 
-Na NixOS przeczytaj najpierw [Notatki dla NixOS](#notatki-dla-nixos): instalacja
-pakietów Pythona wymaga tam dodatkowego kroku.
+Na NixOS [wariant A](#wariant-a-docker-zalecany) nie wymaga żadnych obejść —
+Python i jego biblioteki siedzą w obrazie. Jedyne, co trzeba załatwić, to
+[dostęp do Dockera](#dostęp-do-dockera). Obejście z `LD_LIBRARY_PATH` dotyczy
+wyłącznie wariantu B, patrz [Notatki dla NixOS](#notatki-dla-nixos).
 
 ---
 
 ## Uruchomienie krok po kroku
 
 Wszystkie komendy wykonuj w katalogu `backend/`.
+
+Są dwie drogi. [Wariant A](#wariant-a-docker-zalecany) uruchamia w kontenerach
+także API — jedna komenda, bez venva i bez obejść dla NixOS. [Wariant
+B](#wariant-b-venv-na-hoście) trzyma API na hoście, co daje hot reload i
+debugger w IDE. Konfiguracja z kroku 1 jest wspólna dla obu.
 
 ### 1. Konfiguracja
 
@@ -53,20 +60,66 @@ GEMINI_API_KEY=...
 
 Reszta wartości ma sensowne domyślne i nie wymaga zmian.
 
-### 2. Środowisko Pythona
+### Wariant A: Docker (zalecany)
+
+```bash
+docker compose up -d --build
+```
+
+To wszystko. Dokumentacja: http://localhost:8000/docs
+
+Compose podnosi trzy serwisy w ustalonej kolejności:
+
+| Serwis | Rola |
+| ------ | ---- |
+| `postgres` | PostgreSQL 16 z pgvector, port `5432`, dane w wolumenie `pgdata` |
+| `migrate` | jednorazowo `alembic upgrade head`, potem kończy z kodem 0 |
+| `api` | uvicorn na porcie `8000` |
+
+`api` startuje dopiero, gdy `postgres` jest `healthy`, a `migrate` zakończy się
+sukcesem, więc API nigdy nie obsługuje żądań na nieaktualnym schemacie.
+`migrate` jest idempotentny — na bazie w stanie `head` nic nie robi.
+
+Stan i logi:
+
+```bash
+docker compose ps            # api i postgres mają być (healthy)
+docker compose logs -f api
+```
+
+Po zmianie kodu w `app/` przebuduj obraz: `docker compose up -d --build`.
+Warstwa z zależnościami jest cache'owana, więc trwa to sekundy. Jeśli chcesz
+hot reload bez przebudowy, użyj wariantu B.
+
+Klucze z `.env` wstrzykuje compose przez `env_file`. **Obraz ich nie
+zawiera** — `.env` jest w `.dockerignore`, żeby nie trafiły do warstw obrazu.
+`DATABASE_URL` z `.env` wskazuje na `localhost` (dla wariantu B); compose
+nadpisuje go na `postgres`, czyli nazwę serwisu w sieci kontenerów.
+
+Migracje możesz też odpalić osobno, bez restartu API:
+
+```bash
+docker compose run --rm migrate
+```
+
+### Wariant B: venv na hoście
+
+Potrzebny, jeśli chcesz hot reload albo debugger. Na NixOS wymaga ustawienia
+`LD_LIBRARY_PATH` — patrz [Notatki dla NixOS](#notatki-dla-nixos).
+
+**1. Środowisko Pythona**
 
 ```bash
 python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
 ```
 
-### 3. Baza danych
+**2. Baza danych** — tylko PostgreSQL, bez `api` i `migrate`:
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
 
-Podnosi PostgreSQL 16 z pgvector na porcie `5432` (dane w wolumenie `pgdata`).
 Sprawdź, że kontener jest zdrowy:
 
 ```bash
@@ -77,7 +130,7 @@ W kolumnie `STATUS` powinno być `(healthy)`. Jeśli port 5432 jest zajęty prze
 lokalny PostgreSQL, zatrzymaj go albo zmień mapowanie portu w
 `docker-compose.yml` oraz `DATABASE_URL` w `.env`.
 
-### 4. Migracje
+**3. Migracje**
 
 ```bash
 ./venv/bin/alembic upgrade head
@@ -85,13 +138,17 @@ lokalny PostgreSQL, zatrzymaj go albo zmień mapowanie portu w
 
 Tworzy tabele i włącza rozszerzenie `vector` (nie trzeba robić tego ręcznie).
 
-### 5. Start API
+**4. Start API**
 
 ```bash
 ./venv/bin/uvicorn app.main:app --reload
 ```
 
 Gotowe. Dokumentacja: http://localhost:8000/docs
+
+> Nie mieszaj wariantów na raz: oba chcą portu `8000`. Jeśli `api` chodzi
+> w kontenerze, zatrzymaj je (`docker compose stop api`) przed startem
+> uvicorna na hoście.
 
 ---
 
@@ -159,18 +216,20 @@ Dwa różne cele: zrobić przerwę albo wrócić do stanu przed uruchomieniem.
 
 ### Przerwa (dane zostają)
 
-Zatrzymaj uvicorn przez `Ctrl+C` w jego terminalu. Potem kontener:
-
 ```bash
 docker compose stop
 ```
+
+Zatrzymuje wszystkie kontenery. W wariancie B zatrzymaj dodatkowo uvicorn przez
+`Ctrl+C` w jego terminalu — chodzi poza Dockerem, więc `stop` go nie dotyczy.
 
 Powrót do pracy: `docker compose start` (albo `docker compose up -d`). Baza ma
 nadal zmigrowany schemat i wszystkie dane, więc migracji nie powtarzasz.
 
 ### Czyszczenie samych danych
 
-Jeśli chcesz wyrzucić ogłoszenia i konta z testów, ale zachować schemat i venv:
+Jeśli chcesz wyrzucić ogłoszenia i konta z testów, ale zachować schemat, obraz
+i venv:
 
 ```bash
 docker compose exec postgres \
@@ -179,8 +238,9 @@ docker compose exec postgres \
 ```
 
 Tabela `alembic_version` zostaje nietknięta, więc migracji też nie powtarzasz.
-Kody OTP i refresh tokeny trzyma proces API w pamięci, nie baza — zrestartuj
-uvicorn, jeśli chcesz unieważnić też sesje z testów.
+Kody OTP i refresh tokeny trzyma proces API w pamięci, nie baza — jeśli chcesz
+unieważnić też sesje z testów, zrestartuj go: `docker compose restart api`
+(wariant A) albo uvicorna na hoście (wariant B).
 
 ### Pełne usunięcie
 
@@ -190,11 +250,12 @@ Wykonaj je tylko wtedy, gdy naprawdę chcesz wrócić do stanu sprzed
 uruchomienia. Jeśli chodziło Ci jedynie o zatrzymanie serwera, użyj
 `docker compose stop` z sekcji powyżej.
 
-Kolejność ma znaczenie: najpierw zatrzymaj API, potem usuń kontener, na końcu
-pliki.
+Kolejność ma znaczenie: najpierw zatrzymaj API na hoście, potem usuń kontenery,
+na końcu pliki.
 
-**1. Zatrzymaj API.** `Ctrl+C` w terminalu z uvicornem. Jeśli uruchomiłeś go
-w tle, znajdź i zatrzymaj proces:
+**1. Zatrzymaj uvicorn na hoście.** Dotyczy tylko wariantu B — w wariancie A
+pomiń ten krok, bo API zatrzyma `down` z kroku 2. `Ctrl+C` w terminalu
+z uvicornem. Jeśli uruchomiłeś go w tle, znajdź i zatrzymaj proces:
 
 ```bash
 pgrep -af 'venv/bin/uvicorn'
@@ -205,15 +266,15 @@ Zatrzymanie procesu nadrzędnego (`--reload`) zabiera ze sobą workera.
 Sprawdzenie, że port jest wolny: `curl localhost:8000/health` ma zwrócić błąd
 połączenia.
 
-**2. Usuń kontener, sieć i wolumen.**
+**2. Usuń kontenery, sieć i wolumen.**
 
 ```bash
 docker compose down -v
 ```
 
-Flaga `-v` usuwa wolumen `backend_pgdata` razem z bazą. Bez niej wolumen
-zostaje i następne `up -d` wstanie ze starymi danymi. Samo `down` usuwa jeszcze
-sieć `backend_default`.
+Zabiera `postgres`, `migrate` i `api` razem z siecią `backend_default`. Flaga
+`-v` usuwa dodatkowo wolumen `backend_pgdata` z bazą. Bez niej wolumen zostaje
+i następne `up -d` wstanie ze starymi danymi.
 
 **3. Usuń pliki wygenerowane lokalnie.**
 
@@ -224,18 +285,23 @@ find . -name __pycache__ -type d -prune -exec rm -rf {} +
 ```
 
 Wszystkie trzy są w `.gitignore`, więc repozytorium wygląda po tym tak jak po
-`git clone`. Sprawdź: `git status` ma nie pokazywać nic nowego.
+`git clone`. Sprawdź: `git status` ma nie pokazywać nic nowego. W wariancie A
+venva nie ma, więc zostaje `.env` i `__pycache__`.
 
 > `.env` zawiera Twoje klucze API. Jeśli nie chcesz wpisywać ich ponownie,
 > skopiuj go gdzieś przed usunięciem — ale poza katalog repozytorium, żeby nie
 > trafił przypadkiem do commita.
 
-**4. Opcjonalnie: obraz Dockera.** Zajmuje 631 MB. Usuwaj tylko, jeśli
-odzyskujesz miejsce — ponowne uruchomienie będzie musiało pobrać go na nowo:
+**4. Opcjonalnie: obrazy Dockera.** Razem około 1,2 GB. Usuwaj tylko, jeśli
+odzyskujesz miejsce — następne uruchomienie pobierze Postgresa na nowo
+i przebuduje obraz API:
 
 ```bash
-docker image rm pgvector/pgvector:pg16
+docker image rm smieciarka-backend:latest pgvector/pgvector:pg16
 ```
+
+Sam obraz API możesz też przebudować bez usuwania czegokolwiek:
+`docker compose build --no-cache api`.
 
 Nie uruchamiaj `docker system prune` ani `docker volume prune` zamiast
 powyższych komend. Te polecenia działają na całym demonie i usuwają także
@@ -246,8 +312,9 @@ sesja nie ma jeszcze grupy `docker` — patrz
 [Dostęp do Dockera](#dostęp-do-dockera).
 
 Nowe uruchomienie od zera: wróć do
-[Uruchomienia krok po kroku](#uruchomienie-krok-po-kroku). Wszystkie pięć
-kroków jest znowu potrzebnych, łącznie z migracjami.
+[Uruchomienia krok po kroku](#uruchomienie-krok-po-kroku). Trzeba powtórzyć
+wszystkie kroki, łącznie z migracjami — w wariancie A robi je za Ciebie serwis
+`migrate`.
 
 ---
 
@@ -282,6 +349,11 @@ domowy. Jeśli frontend pokazuje pineskę, używaj `location_label` do opisu.
 ## Notatki dla NixOS
 
 Dwie rzeczy działają inaczej niż na innych distro.
+
+Pierwsza z nich — biblioteki systemowe — **dotyczy wyłącznie
+[wariantu B](#wariant-b-venv-na-hoście)**. W wariancie A Python i jego
+zależności żyją w obrazie zbudowanym na Debianie, więc problem nie istnieje
+i nie ustawiasz niczego. Dostęp do Dockera trzeba załatwić w obu wariantach.
 
 ### Biblioteki systemowe dla pakietów Pythona
 
@@ -446,11 +518,15 @@ w bazie, brak rate limitingu i CAPTCHA.
 
 | Objaw | Przyczyna |
 | ----- | --------- |
-| `ImportError: libstdc++.so.6` | NixOS, brak `LD_LIBRARY_PATH` — patrz wyżej |
+| `ImportError: libstdc++.so.6` | wariant B na NixOS, brak `LD_LIBRARY_PATH` — patrz wyżej |
 | `wrong ELF class: ELFCLASS32` | `LD_LIBRARY_PATH` wskazuje 32-bitowy `zlib` |
 | `permission denied ... Docker API` | brak grupy `docker` w tej sesji — użyj `sg docker -c '...'` |
-| `RuntimeError: EMBEDDING_PROVIDER=jina but JINA_API_KEY is empty` | uzupełnij klucz w `.env` |
+| `RuntimeError: EMBEDDING_PROVIDER=jina but JINA_API_KEY is empty` | uzupełnij klucz w `.env`. W wariancie A po edycji `.env` zrób `docker compose up -d` — compose czyta go przy starcie kontenera |
 | `query expansion failed` w logach | nieaktualny `GEMINI_MODEL` albo zły klucz; filtry powstaną, ale będą słabo dopasowywać |
 | `expected 1024 dimensions, not 384` | zmieniono providera bez migracji — patrz [Tryb offline](#tryb-offline-bez-kluczy) |
 | Filtr nie powiadamia | autor nie dostaje powiadomień o własnych ogłoszeniach; użyj drugiego numeru |
 | `connection refused` na 5432 | kontener nie wstał: `docker compose ps` |
+| `env file .env not found` przy `up` | nie zrobiłeś kroku 1: `cp .env.example .env` |
+| `port is already allocated` na 8000 | uvicorn z wariantu B jeszcze chodzi; zatrzymaj go albo `docker compose stop api` |
+| `api` czeka i nie startuje | `migrate` padł; zobacz `docker compose logs migrate` |
+| Zmiana w `app/` nie działa w wariancie A | obraz trzyma kopię kodu: `docker compose up -d --build` |

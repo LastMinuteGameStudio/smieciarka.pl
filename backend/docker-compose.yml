@@ -15,5 +15,44 @@ services:
       timeout: 5s
       retries: 10
 
+  # One-shot: brings the schema to head, then exits 0. The api service waits
+  # for that exit, so `docker compose up` never serves against a stale schema.
+  # Idempotent -- re-running on an up-to-date database is a no-op.
+  migrate:
+    build: .
+    # Same tag as api: one build, one image, two entrypoints.
+    image: smieciarka-backend:latest
+    command: ["alembic", "upgrade", "head"]
+    env_file: .env
+    environment:
+      # Overrides DATABASE_URL from .env, which points at localhost for the
+      # host-side venv workflow. Inside the network the database is "postgres".
+      DATABASE_URL: postgresql+asyncpg://smieciarka:smieciarka@postgres:5432/smieciarka
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    image: smieciarka-backend:latest
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://smieciarka:smieciarka@postgres:5432/smieciarka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # python, not curl: the slim base image ships no HTTP client.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
 volumes:
   pgdata:
