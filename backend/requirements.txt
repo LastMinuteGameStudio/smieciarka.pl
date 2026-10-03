@@ -26,4 +26,4 @@ asyncpg==0.30.0
 alembic==1.14.0
 pgvector==0.3.6
 pyjwt==2.10.1
-openai==1.57.0
+fastembed==0.8.1

@@ -12,9 +12,9 @@ class Settings(BaseSettings):
 
     otp_mock: bool = True
 
-    embedding_provider: str = "openai"
-    embedding_model: str = "text-embedding-3-small"
-    embedding_dim: int = 1536
+    embedding_provider: str = "fastembed"
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    embedding_dim: int = 384
     llm_api_key: str = ""
 
     match_threshold_low: float = 0.55
