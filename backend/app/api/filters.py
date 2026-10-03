@@ -1,14 +1,16 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.config import settings
 from app.db import get_db
 from app.models import AreaType, User, WatchFilter
 from app.schemas.filter import FilterCreate, FilterOut
 from app.services.embeddings import embed_query
+from app.services.query_expansion import expand_query
 
 router = APIRouter()
 
@@ -22,11 +24,25 @@ async def create_filter(
     if body.area.type == AreaType.radius and (body.area.center is None or body.area.radius_m is None):
         raise HTTPException(status_code=400, detail="radius area requires center and radius_m")
 
-    vector = await embed_query(body.query)
+    existing = await db.scalar(
+        select(func.count()).select_from(WatchFilter).where(WatchFilter.user_id == current_user.id)
+    )
+    if existing >= settings.max_filters_per_user:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Filter limit reached ({settings.max_filters_per_user})",
+        )
+
+    # Expand once, here, and embed the expansion: an abstract need scores poorly
+    # against concrete listings otherwise (spec 6.2). The user only ever sees
+    # body.query. Falls back to the raw query if expansion is unavailable.
+    expanded = await expand_query(body.query)
+    vector = await embed_query(expanded or body.query)
 
     watch_filter = WatchFilter(
         user_id=current_user.id,
         query=body.query,
+        expanded_query=expanded,
         embedding=vector,
         area_type=body.area.type,
         center_lat=body.area.center.lat if body.area.center else None,

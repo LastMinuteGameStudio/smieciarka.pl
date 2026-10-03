@@ -27,3 +27,4 @@ alembic==1.14.0
 pgvector==0.3.6
 pyjwt==2.10.1
 fastembed==0.8.1
+httpx==0.28.1
