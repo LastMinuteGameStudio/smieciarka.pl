@@ -10,7 +10,7 @@ from app.config import settings
 from app.db import get_db
 from app.models import Listing, ListingStatus, User
 from app.schemas.listing import ListingCreate, ListingOut, ListingStatusUpdate
-from app.services.embeddings import embed_passage
+from app.services.embeddings import embed_passage, embed_query
 
 router = APIRouter()
 
@@ -52,6 +52,29 @@ async def create_listing(
     await db.commit()
     await db.refresh(listing)
     return listing
+
+
+@router.get("/listings/search", response_model=list[ListingOut])
+async def search_listings(
+    q: str = Query(..., min_length=1),
+    lat: float | None = Query(None),
+    lng: float | None = Query(None),
+    radius: int = Query(5000, description="radius in meters, requires lat/lng"),
+    db: AsyncSession = Depends(get_db),
+):
+    query_vector = await embed_query(q)
+
+    stmt = (
+        select(Listing)
+        .where(Listing.status == ListingStatus.active)
+        .order_by(Listing.embedding.cosine_distance(query_vector))
+        .limit(50)
+    )
+    if lat is not None and lng is not None:
+        stmt = stmt.where(_distance_m(lat, lng) <= radius)
+
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
 
 @router.get("/listings/nearby", response_model=list[ListingOut])
