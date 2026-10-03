@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -21,6 +21,8 @@ class ListingCreate(BaseModel):
     description: str | None = Field(None, max_length=2000)
     location: LocationIn
     location_label: str | None = Field(None, max_length=120)
+    address: str | None = Field(None, max_length=200)
+    pickup_date: date | None = None
 
 
 class ListingStatusUpdate(BaseModel):
@@ -34,6 +36,9 @@ class ListingOut(BaseModel):
     lat: float
     lng: float
     location_label: str | None
+    address: str | None
+    pickup_date: date | None
+    author_phone: str | None
     status: ListingStatus
     created_at: datetime
     expires_at: datetime | None
