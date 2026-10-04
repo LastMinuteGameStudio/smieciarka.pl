@@ -1,6 +1,10 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
+    # The demo is exposed publicly, so the stack has to come back by itself
+    # after a reboot or a docker daemon restart. "migrate" keeps restart: "no"
+    # -- it is a one-shot that must exit 0 exactly once.
+    restart: unless-stopped
     environment:
       POSTGRES_USER: smieciarka
       POSTGRES_PASSWORD: smieciarka
@@ -28,6 +32,7 @@ services:
   # a volume.
   s3:
     image: localstack/localstack:4
+    restart: unless-stopped
     environment:
       SERVICES: s3
       # The bucket is created by the API on first upload, not by an init job.
@@ -63,18 +68,23 @@ services:
   api:
     build: .
     image: smieciarka-backend:latest
+    restart: unless-stopped
     ports:
       - "8000:8000"
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://smieciarka:smieciarka@postgres:5432/smieciarka
-      # Inside the container network the store is "s3"; from the host it is
-      # "localhost". Both are needed: the API uploads over the internal name,
-      # but a presigned URL is signed for the host the client will call, and
-      # SigV4 covers the Host header -- so the two cannot be swapped after
-      # signing. See services/storage.py.
+      # Inside the container network the store is "s3"; the client reaches it
+      # over the demo tunnel at s3.wkrynski.dev. Both are needed: the API
+      # uploads over the internal name, but a presigned URL is signed for the
+      # host the client will call, and SigV4 covers the Host header -- so the
+      # two cannot be swapped after signing. See services/storage.py.
+      #
+      # For an emulator-only run with no tunnel, set S3_PUBLIC_ENDPOINT to
+      # http://10.0.2.2:4566 (10.0.2.2 is the emulator's alias for the host)
+      # and point api_config.dart at the same host.
       S3_ENDPOINT: http://s3:4566
-      S3_PUBLIC_ENDPOINT: http://localhost:4566
+      S3_PUBLIC_ENDPOINT: https://s3.wkrynski.dev
     depends_on:
       postgres:
         condition: service_healthy
