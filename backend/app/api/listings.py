@@ -58,6 +58,8 @@ async def create_listing(
         lat=body.location.lat,
         lng=body.location.lng,
         location_label=body.location_label,
+        address=body.address,
+        pickup_date=body.pickup_date,
         embedding=vector,
         status=ListingStatus.active,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=settings.listing_ttl_hours),
