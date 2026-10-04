@@ -14,12 +14,14 @@ class AreaIn(BaseModel):
 
 
 class FilterCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=60)
     query: str = Field(..., min_length=1, max_length=200)
     area: AreaIn
 
 
 class FilterOut(BaseModel):
     id: uuid.UUID
+    name: str | None
     query: str
     area_type: AreaType
     center_lat: float | None

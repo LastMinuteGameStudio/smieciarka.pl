@@ -41,6 +41,7 @@ async def create_filter(
 
     watch_filter = WatchFilter(
         user_id=current_user.id,
+        name=body.name,
         query=body.query,
         expanded_query=expanded,
         embedding=vector,
