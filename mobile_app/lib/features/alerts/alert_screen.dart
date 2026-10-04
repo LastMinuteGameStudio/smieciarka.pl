@@ -27,6 +27,9 @@ class AlertScreen extends StatelessWidget {
             child: const Text('Anuluj'),
           ),
           TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Usuń'),
           ),
@@ -67,9 +70,9 @@ class AlertScreen extends StatelessWidget {
                 trailing: IconButton(
                   tooltip: 'Usuń alert',
                   onPressed: () => _delete(context),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.delete_outline_rounded,
-                    color: ColorPalette.mainColor,
+                    color: Theme.of(context).colorScheme.error,
                   ),
                 ),
               ),

@@ -1,16 +1,62 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uczciwa_cena/core/theme/color_palette.dart';
 import 'package:uczciwa_cena/core/utils/native_maps.dart';
 import 'package:uczciwa_cena/core/widgets/uc_page_header.dart';
+import 'package:uczciwa_cena/features/items/data/listings_repository.dart';
 import 'package:uczciwa_cena/features/items/widgets/contact_sheet.dart';
 import 'package:uczciwa_cena/features/items/widgets/item_image_carousel.dart';
 import 'package:uczciwa_cena/models/item.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Pops with `true` when the listing was deleted, so the list can refresh.
 class ItemScreen extends StatelessWidget {
   const ItemScreen({super.key, required this.item});
 
   final Item item;
+
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Usunąć ogłoszenie?'),
+        content: const Text(
+          'Ogłoszenie zniknie z listy i nie będzie już widoczne dla innych.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Anuluj'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Usuń'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    try {
+      await GetIt.instance<ListingsRepository>().delete(item.id);
+      if (context.mounted) {
+        context.pop(true);
+      }
+    } on DioException {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nie udało się usunąć ogłoszenia')),
+        );
+      }
+    }
+  }
 
   Future<void> _openPickupLocation(
     BuildContext context,
@@ -48,7 +94,20 @@ class ItemScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              UCPageHeader(title: 'Opis przedmiotu', showBack: false),
+              UCPageHeader(
+                title: 'Opis przedmiotu',
+                showBack: false,
+                trailing: item.isMine
+                    ? IconButton(
+                        tooltip: 'Usuń ogłoszenie',
+                        onPressed: () => _delete(context),
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      )
+                    : null,
+              ),
               const SizedBox(height: 24),
               ItemImageCarousel(imageUrls: item.imageUrls),
               const SizedBox(height: 24),

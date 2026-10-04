@@ -6,6 +6,7 @@ class Item {
     this.phoneNumber,
     this.pickupLocation,
     this.imageUrls = const [],
+    this.isMine = false,
   });
 
   final String id;
@@ -18,4 +19,7 @@ class Item {
   /// `null` when the owner hasn't provided a pickup location.
   final String? pickupLocation;
   final List<String> imageUrls;
+
+  /// True for the signed-in user's own listings; only those can be deleted.
+  final bool isMine;
 }

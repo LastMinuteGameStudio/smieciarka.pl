@@ -32,7 +32,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
   late final Future<LatLng> _location = currentLocationOr(warsawCenter);
 
   Timer? _timer;
-  bool _mineOnly = false;
+  ItemFilters _filters = const ItemFilters(mineOnly: false, maxDistanceKm: 10);
   String _query = '';
   late Future<List<Item>> _items = _search(_query);
 
@@ -43,7 +43,15 @@ class _ItemsScreenState extends State<ItemsScreen> {
   }
 
   Future<List<Item>> _search(String query) async {
-    return _repository.search(query, await _location, mine: _mineOnly);
+    final filters = _filters;
+    final distanceKm = filters.maxDistanceKm;
+    final at = distanceKm == null ? null : await _location;
+    return _repository.search(
+      query,
+      at: at,
+      radiusM: distanceKm == null ? null : distanceKm * 1000,
+      mine: filters.mineOnly,
+    );
   }
 
   void _onQueryChanged(String query) {
@@ -81,28 +89,31 @@ class _ItemsScreenState extends State<ItemsScreen> {
   }
 
   Future<void> _openFilters() async {
-    final mineOnly = await showItemFiltersSheet(context, mineOnly: _mineOnly);
-    if (mineOnly == null || mineOnly == _mineOnly || !mounted) {
+    final filters = await showItemFiltersSheet(context, current: _filters);
+    if (filters == null || !mounted) {
       return;
     }
-    final loggedIn = await GetIt.instance<AuthRepository>().hasStoredSession();
-    if (!mounted) {
-      return;
-    }
-    if (mineOnly && !loggedIn) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Zaloguj się, aby zobaczyć swoje ogłoszenia.'),
-          action: SnackBarAction(
-            label: 'Zaloguj',
-            onPressed: () => context.push(AppRoutes.login),
+    if (filters.mineOnly) {
+      final loggedIn = await GetIt.instance<AuthRepository>()
+          .hasStoredSession();
+      if (!mounted) {
+        return;
+      }
+      if (!loggedIn) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Zaloguj się, aby zobaczyć swoje ogłoszenia.'),
+            action: SnackBarAction(
+              label: 'Zaloguj',
+              onPressed: () => context.push(AppRoutes.login),
+            ),
           ),
-        ),
-      );
-      return;
+        );
+        return;
+      }
     }
     setState(() {
-      _mineOnly = mineOnly;
+      _filters = filters;
       _items = _search(_query);
     });
   }
@@ -131,11 +142,10 @@ class _ItemsScreenState extends State<ItemsScreen> {
                 const SizedBox(height: 24),
                 Row(
                   children: [
-                    UCButtonShadow(
-                      child: Expanded(
+                    Expanded(
+                      child: UCButtonShadow(
                         child: SizedBox(
                           height: 56,
-
                           child: ElevatedButton.icon(
                             onPressed: _openFilters,
                             icon: const Icon(Icons.tune_rounded),
@@ -156,7 +166,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
                         ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 12),
                     UCAddButton(onPressed: _openNewItem),
                   ],
                 ),
@@ -188,7 +198,8 @@ class _ItemsScreenState extends State<ItemsScreen> {
             return ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: items.length,
-              itemBuilder: (_, index) => ItemTile(item: items[index]),
+              itemBuilder: (_, index) =>
+                  ItemTile(item: items[index], onDeleted: _refresh),
               separatorBuilder: (_, _) => const SizedBox(height: 12),
             );
           }

@@ -130,42 +130,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return RefreshIndicator(
       color: ColorPalette.mainColor,
       onRefresh: _refresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          TextFormField(
-            key: ValueKey(profile.phoneNumber),
-            initialValue: _localDigits(profile.phoneNumber),
-            readOnly: true,
-            decoration: const InputDecoration(
-              labelText: 'Nr telefonu',
-              prefixText: '+48 ',
-              suffixIcon: Icon(Icons.lock_outline_rounded),
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: constraints.maxHeight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  key: ValueKey(profile.phoneNumber),
+                  initialValue: _localDigits(profile.phoneNumber),
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Nr telefonu',
+                    prefixText: '+48 ',
+                    suffixIcon: Icon(Icons.lock_outline_rounded),
+                  ),
+                ),
+                const Expanded(child: SizedBox.shrink()),
+                if (profile.isSubscribed)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Subskrypcja jest aktywna',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: ColorPalette.descColor,
+                      ),
+                    ),
+                  ),
+                UCButton(
+                  label: profile.isSubscribed
+                      ? 'Anuluj subskrypcję'
+                      : 'Kup subskrypcję',
+                  onPressed: _toggleSubscription,
+                ),
+                const SizedBox(height: 16),
+                UCButton(
+                  label: 'Wyloguj się',
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  onPressed: _logout,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 48),
-          if (profile.isSubscribed)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Subskrypcja jest aktywna',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: ColorPalette.descColor),
-              ),
-            ),
-          UCButton(
-            label: profile.isSubscribed
-                ? 'Anuluj subskrypcję'
-                : 'Kup subskrypcję',
-            onPressed: _toggleSubscription,
-          ),
-          const SizedBox(height: 16),
-          UCButton(
-            label: 'Wyloguj się',
-            backgroundColor: Theme.of(context).colorScheme.error,
-            onPressed: _logout,
-          ),
-        ],
+        ),
       ),
     );
   }
