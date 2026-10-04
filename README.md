@@ -1,4 +1,4 @@
-# 🗑️➡️🎁 Backend – aplikacja „Zanim zabierze śmieciarka”
+# 🗑️➡️🎁 Backend – aplikacja „UczciwaCena”
 
 Aplikacja skraca drogę między osobą, która oddaje rzeczy (zwykle wystawiane przed odbiorem gabarytów i ogłaszane na lokalnych grupach), a osobą, która ich szuka. Kluczowe funkcje backendu to **semantyczne wyszukiwanie ogłoszeń** oraz **filtry nasłuchiwania**, które wysyłają powiadomienie, gdy pojawi się przedmiot pasujący znaczeniowo (a nie tylko słowami) do tego, czego użytkownik szuka.
 
