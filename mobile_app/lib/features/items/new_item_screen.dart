@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:uczciwa_cena/core/theme/color_palette.dart';
 import 'package:uczciwa_cena/core/widgets/uc_button.dart';
 import 'package:uczciwa_cena/core/widgets/uc_page_header.dart';
-import 'package:uczciwa_cena/features/items/widgets/city_autocomplete_field.dart';
 import 'package:uczciwa_cena/features/items/widgets/item_photos_picker.dart';
 import 'package:uczciwa_cena/features/items/widgets/pickup_date_field.dart';
+import 'package:uczciwa_cena/features/items/widgets/pickup_location_picker.dart';
 
 class NewItemScreen extends StatefulWidget {
   const NewItemScreen({super.key});
@@ -17,7 +19,6 @@ class NewItemScreen extends StatefulWidget {
 class _NewItemScreenState extends State<NewItemScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  String? _city;
   DateTime? _pickupDate;
   List<XFile> _photos = const [];
 
@@ -32,7 +33,7 @@ class _NewItemScreenState extends State<NewItemScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
-    // TODO: send the listing to the backend.
+    // TODO: send the listing (name, description, pin, date, photos) to the backend.
     context.pop();
   }
 
@@ -66,18 +67,37 @@ class _NewItemScreenState extends State<NewItemScreen> {
                   maxLength: 2000,
                   keyboardType: TextInputType.multiline,
                 ),
-                const SizedBox(height: 16),
-                CityAutocompleteField(
-                  onChanged: (city) => setState(() => _city = city),
-                ),
-                if (_city != null) ...[
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Adres (opcjonalnie)',
-                    ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Miejsce odbioru *',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: ColorPalette.titleColor,
                   ),
-                ],
+                ),
+                const SizedBox(height: 12),
+                FormField<LatLng>(
+                  validator: (point) =>
+                      point == null ? 'Zaznacz miejsce odbioru na mapie' : null,
+                  builder: (field) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      PickupLocationPicker(onChanged: field.didChange),
+                      if (field.hasError)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, left: 12),
+                          child: Text(
+                            field.errorText!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 16),
                 PickupDateField(
                   value: _pickupDate,

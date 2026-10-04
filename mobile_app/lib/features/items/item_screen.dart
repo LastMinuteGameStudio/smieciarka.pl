@@ -30,10 +30,13 @@ class ItemScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pickupLocation = item.pickupLocation;
+    final phone = item.phoneNumber;
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showContactSheet(context, item.phoneNumber),
+        onPressed: phone == null
+            ? null
+            : () => showContactSheet(context, phone),
         backgroundColor: ColorPalette.mainColor,
         foregroundColor: ColorPalette.yelowishWhite,
         icon: const Icon(Icons.phone_rounded),

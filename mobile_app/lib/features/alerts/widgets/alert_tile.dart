@@ -12,7 +12,7 @@ class AlertTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return UCListTile(
-      title: 'Alert ${alert.id}',
+      title: alert.name,
       onTap: () => context.push(AppRoutes.alert, extra: alert),
     );
   }

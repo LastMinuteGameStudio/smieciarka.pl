@@ -7,12 +7,14 @@ class SearchAddBar extends StatelessWidget {
     super.key,
     required this.hintText,
     required this.onAddPressed,
+    this.onChanged,
   });
 
   static const _height = 64.0;
 
   final String hintText;
   final VoidCallback onAddPressed;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +27,7 @@ class SearchAddBar extends StatelessWidget {
               expands: true,
               maxLines: null,
               textAlignVertical: TextAlignVertical.center,
+              onChanged: onChanged,
               decoration: InputDecoration(
                 hintText: hintText,
                 hintStyle: const TextStyle(

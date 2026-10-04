@@ -3,7 +3,7 @@ class Item {
     required this.id,
     required this.name,
     required this.description,
-    required this.phoneNumber,
+    this.phoneNumber,
     this.pickupLocation,
     this.imageUrls = const [],
   });
@@ -11,7 +11,9 @@ class Item {
   final String id;
   final String name;
   final String description;
-  final String phoneNumber;
+
+  /// The author's phone, shared on the listing. `null` when not provided.
+  final String? phoneNumber;
 
   /// `null` when the owner hasn't provided a pickup location.
   final String? pickupLocation;

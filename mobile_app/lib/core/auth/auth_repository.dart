@@ -46,6 +46,13 @@ class AuthRepository {
     }
   }
 
+  /// Whether tokens are stored. Doesn't check that they're still valid.
+  Future<bool> hasStoredSession() async {
+    final access = await tokens.readAccessToken();
+    final refresh = await tokens.readRefreshToken();
+    return access != null || refresh != null;
+  }
+
   Future<void> logout() => tokens.clear();
 
   Future<bool> _refresh() async {
