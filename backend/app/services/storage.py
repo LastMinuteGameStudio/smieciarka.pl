@@ -23,7 +23,17 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # Presigned URLs need SigV4 for MinIO to accept them.
-_CONFIG = Config(signature_version="s3v4", retries={"max_attempts": 3})
+#
+# Path addressing is pinned, not left to boto3's "auto". Auto puts a
+# DNS-compatible bucket in the hostname, which turns the public endpoint into
+# listing-images.s3.wkrynski.dev -- a name with no DNS record and no tunnel
+# route, so every presigned URL would fail to resolve. Path style keeps the
+# bucket where the single hostname can serve it.
+_CONFIG = Config(
+    signature_version="s3v4",
+    s3={"addressing_style": "path"},
+    retries={"max_attempts": 3},
+)
 
 _internal_client = None
 _public_client = None
