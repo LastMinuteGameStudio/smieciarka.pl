@@ -1,3 +1,4 @@
+import logging
 import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -12,10 +13,12 @@ from app.db import get_db
 from app.models import Listing, ListingImage, ListingStatus, User
 from app.schemas.listing import ListingCreate, ListingOut, ListingStatusUpdate, listing_out
 from app.services.embeddings import embed_passage, embed_query, listing_text
+from app.services import jina
 from app.services.geo import distance_m_expr
 from app.services.matching import match_listing_to_filters
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _distance_m(lat: float, lng: float):
@@ -73,15 +76,46 @@ async def create_listing(
     return listing_out(listing, exact=True)
 
 
+async def _relevant_by_rerank(query: str, listings: list[Listing]) -> list[Listing]:
+    """Keep only listings the reranker considers relevant, best first.
+
+    Cosine similarity orders results but has no cut-off, so without this every
+    active listing would come back for any query. The reranker's scores are
+    calibrated, so the matcher's threshold decides what counts as a hit.
+
+    One request for all candidates: per-listing requests trip the free tier's
+    rate limit and silently drop listings. If the call fails, nothing is shown
+    rather than unfiltered results.
+    """
+    if not listings:
+        return []
+    try:
+        scores = await jina.rerank(query, [x.title for x in listings])
+    except Exception:
+        logger.exception("rerank failed for search %r", query)
+        return []
+
+    hits = [
+        (value, listing)
+        for value, listing in zip(scores, listings)
+        if value >= settings.match_rerank_threshold
+    ]
+    hits.sort(key=lambda pair: pair[0], reverse=True)
+    return [listing for _, listing in hits]
+
+
 @router.get("/listings/search", response_model=list[ListingOut])
 async def search_listings(
     q: str = Query(..., min_length=1),
     lat: float | None = Query(None),
     lng: float | None = Query(None),
     radius: int = Query(5000, description="radius in meters, requires lat/lng"),
+    mine: bool = Query(False, description="only the signed-in user's listings"),
     viewer: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if mine and viewer is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
     query_vector = await embed_query(q)
 
     stmt = (
@@ -92,9 +126,11 @@ async def search_listings(
     )
     if lat is not None and lng is not None:
         stmt = stmt.where(_distance_m(lat, lng) <= radius)
+    if mine:
+        stmt = stmt.where(Listing.author_id == viewer.id)
 
     result = await db.execute(stmt)
-    listings = result.scalars().all()
+    listings = await _relevant_by_rerank(q, list(result.scalars().all()))
     images = await _images_for([x.id for x in listings], db)
     return [
         listing_out(
@@ -111,15 +147,21 @@ async def listings_nearby(
     lat: float = Query(...),
     lng: float = Query(...),
     radius: int = Query(5000, description="radius in meters"),
+    mine: bool = Query(False, description="only the signed-in user's listings"),
     viewer: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
+    if mine and viewer is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    stmt = (
         select(Listing)
         .where(Listing.status == ListingStatus.active)
         .where(_distance_m(lat, lng) <= radius)
-        .order_by(Listing.created_at.desc())
-        .limit(50)
+    )
+    if mine:
+        stmt = stmt.where(Listing.author_id == viewer.id)
+    result = await db.execute(
+        stmt.order_by(Listing.created_at.desc()).limit(50)
     )
     listings = result.scalars().all()
     images = await _images_for([x.id for x in listings], db)

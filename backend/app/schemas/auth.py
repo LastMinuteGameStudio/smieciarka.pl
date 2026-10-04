@@ -30,6 +30,7 @@ class UserOut(BaseModel):
     id: uuid.UUID
     phone_number: str
     display_name: str | None
+    is_subscribed: bool
     created_at: datetime
 
     class Config:

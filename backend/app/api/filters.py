@@ -27,11 +27,17 @@ async def create_filter(
     existing = await db.scalar(
         select(func.count()).select_from(WatchFilter).where(WatchFilter.user_id == current_user.id)
     )
-    if existing >= settings.max_filters_per_user:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Filter limit reached ({settings.max_filters_per_user})",
+    if current_user.is_subscribed:
+        limit = settings.max_filters_per_user
+        message = f"Osiągnięto limit alertów ({limit})."
+    else:
+        limit = settings.free_filters_per_user
+        message = (
+            f"Bez subskrypcji można mieć {limit} alert. "
+            f"Z subskrypcją do {settings.max_filters_per_user}."
         )
+    if existing >= limit:
+        raise HTTPException(status_code=409, detail=message)
 
     # Expand once, here, and embed the expansion: an abstract need scores poorly
     # against concrete listings otherwise (spec 6.2). The user only ever sees

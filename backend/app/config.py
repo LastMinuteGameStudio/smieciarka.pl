@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     match_threshold_high: float = 0.75
 
     listing_ttl_hours: int = 72
+    # Alerts (watch filters) allowed without a subscription, and with one.
+    free_filters_per_user: int = 1
     max_filters_per_user: int = 10
 
     # --- Images ---
