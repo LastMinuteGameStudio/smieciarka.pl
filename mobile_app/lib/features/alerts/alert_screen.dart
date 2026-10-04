@@ -1,8 +1,12 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:uczciwa_cena/core/theme/color_palette.dart';
 import 'package:uczciwa_cena/core/widgets/uc_page_header.dart';
+import 'package:uczciwa_cena/features/alerts/data/alerts_repository.dart';
 import 'package:uczciwa_cena/models/alert.dart';
 import 'package:uczciwa_cena/models/search_area.dart';
 
@@ -10,6 +14,42 @@ class AlertScreen extends StatelessWidget {
   const AlertScreen({super.key, required this.alert});
 
   final Alert alert;
+
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Usunąć alert?'),
+        content: const Text('Nie będzie już dopasowywał nowych ogłoszeń.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Anuluj'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Usuń'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    try {
+      await GetIt.instance<AlertsRepository>().delete(alert.id);
+      if (context.mounted) {
+        context.pop();
+      }
+    } on DioException {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nie udało się usunąć alertu')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +62,17 @@ class AlertScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const UCPageHeader(title: 'Opis alertu'),
+              UCPageHeader(
+                title: 'Opis alertu',
+                trailing: IconButton(
+                  tooltip: 'Usuń alert',
+                  onPressed: () => _delete(context),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: ColorPalette.mainColor,
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
               Text(
                 alert.name,

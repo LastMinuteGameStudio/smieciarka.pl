@@ -48,7 +48,7 @@ class ItemScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              UCPageHeader(title: 'Opis przedmiotu'),
+              UCPageHeader(title: 'Opis przedmiotu', showBack: false),
               const SizedBox(height: 24),
               ItemImageCarousel(imageUrls: item.imageUrls),
               const SizedBox(height: 24),

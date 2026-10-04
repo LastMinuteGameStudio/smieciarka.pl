@@ -55,11 +55,16 @@ class _NewAlertScreenState extends State<NewAlertScreen> {
       if (mounted) {
         context.pop();
       }
-    } on DioException {
+    } on DioException catch (error) {
+      // The backend explains limits in `detail`, e.g. the free plan's one alert.
+      final data = error.response?.data;
+      final detail = data is Map<String, dynamic>
+          ? data['detail'] as String?
+          : null;
       if (mounted) {
         setState(() => _submitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nie udało się utworzyć alertu')),
+          SnackBar(content: Text(detail ?? 'Nie udało się utworzyć alertu')),
         );
       }
     }

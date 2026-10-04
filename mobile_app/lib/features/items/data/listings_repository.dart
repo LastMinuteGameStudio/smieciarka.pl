@@ -10,12 +10,18 @@ class ListingsRepository {
   final Dio dio;
 
   /// Semantic search around [at]. An empty [query] lists the nearest listings.
-  Future<List<Item>> search(String query, LatLng at) async {
+  /// [mine] limits results to the signed-in user's listings (needs a session).
+  Future<List<Item>> search(
+    String query,
+    LatLng at, {
+    bool mine = false,
+  }) async {
     final text = query.trim();
     final location = {
       'lat': at.latitude,
       'lng': at.longitude,
       'radius': _radiusM,
+      if (mine) 'mine': true,
     };
 
     final response = text.isEmpty
@@ -41,6 +47,10 @@ class ListingsRepository {
       phoneNumber: json['author_phone'] as String?,
       pickupLocation:
           (json['address'] as String?) ?? (json['location_label'] as String?),
+      imageUrls: [
+        for (final image in (json['images'] as List<dynamic>? ?? const []))
+          (image as Map<String, dynamic>)['url'] as String,
+      ],
     );
   }
 }
