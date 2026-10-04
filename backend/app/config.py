@@ -43,5 +43,33 @@ class Settings(BaseSettings):
     listing_ttl_hours: int = 72
     max_filters_per_user: int = 10
 
+    # --- Images ---
+    # s3_endpoint is reachable from the API; s3_public_endpoint is the host a
+    # client will call. They differ under compose (minio:9000 vs
+    # localhost:9000) and SigV4 signs the Host header, so a presigned URL has
+    # to be produced by a client bound to the public one.
+    s3_endpoint: str = "http://localhost:9000"
+    s3_public_endpoint: str = ""
+    s3_bucket: str = "listing-images"
+    s3_access_key: str = "smieciarka"
+    s3_secret_key: str = "smieciarka-dev-only"
+    s3_region: str = "us-east-1"
+    s3_presign_ttl: int = 3600
+
+    max_images_per_listing: int = 6
+    max_image_bytes: int = 10 * 1024 * 1024
+    thumb_max_px: int = 480
+    image_max_px: int = 1600
+
+    # Captioning reuses GEMINI_API_KEY. Off means uploads still work, the
+    # listing just keeps the caption it already had (usually none).
+    vision_enabled: bool = True
+    gemini_vision_model: str = "gemini-flash-lite-latest"
+
+    @property
+    def s3_signing_endpoint(self) -> str:
+        """Endpoint a presigned URL is signed for; falls back to the internal one."""
+        return self.s3_public_endpoint or self.s3_endpoint
+
 
 settings = Settings()

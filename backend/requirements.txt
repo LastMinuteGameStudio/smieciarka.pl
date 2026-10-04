@@ -28,3 +28,9 @@ pgvector==0.3.6
 pyjwt==2.10.1
 fastembed==0.8.1
 httpx==0.28.1
+
+# Images: multipart upload, EXIF stripping and thumbnails, S3/MinIO client.
+python-multipart==0.0.32
+Pillow==12.3.0
+pillow-heif==1.8.0
+boto3==1.43.108

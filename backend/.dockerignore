@@ -1,0 +1,16 @@
+# Keep secrets out of the image: the API reads them from the environment that
+# compose injects, never from a baked-in file.
+.env
+*.backup
+
+venv/
+__pycache__/
+*.pyc
+
+.git/
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+README.md
+docs/

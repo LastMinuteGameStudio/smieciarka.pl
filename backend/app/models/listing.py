@@ -30,6 +30,10 @@ class Listing(Base):
     author = relationship("User", lazy="joined")
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Written by the vision model after a photo upload, not by the author.
+    # Feeds the embedding text so a listing is findable by what is in its
+    # picture, and is never shown as if the author wrote it.
+    image_caption: Mapped[str | None] = mapped_column(Text, nullable=True)
     lat: Mapped[float] = mapped_column(Float, nullable=False)
     lng: Mapped[float] = mapped_column(Float, nullable=False)
     location_label: Mapped[str | None] = mapped_column(String, nullable=True)

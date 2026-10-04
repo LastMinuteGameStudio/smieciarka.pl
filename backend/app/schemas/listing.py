@@ -29,10 +29,21 @@ class ListingStatusUpdate(BaseModel):
     status: ListingStatus
 
 
+class ListingImageOut(BaseModel):
+    """One photo. URLs are presigned and expire, so they are not persisted."""
+
+    id: uuid.UUID
+    position: int
+    url: str
+    thumb_url: str
+    caption: str | None
+
+
 class ListingOut(BaseModel):
     id: uuid.UUID
     title: str
     description: str | None
+    image_caption: str | None
     lat: float
     lng: float
     location_label: str | None
@@ -42,15 +53,36 @@ class ListingOut(BaseModel):
     status: ListingStatus
     created_at: datetime
     expires_at: datetime | None
+    images: list[ListingImageOut] = []
 
     class Config:
         from_attributes = True
 
 
-def listing_out(listing, *, exact: bool) -> ListingOut:
-    """Serialize a listing, blurring coordinates unless the viewer is its author."""
+def listing_out(listing, *, exact: bool, images=()) -> ListingOut:
+    """Serialize a listing, blurring coordinates unless the viewer is its author.
+
+    Images are passed in rather than lazy-loaded: presigning touches no
+    network but the rows must already be fetched, and an async session will
+    not load a relationship on attribute access.
+    """
+    # Imported here: app.services.storage builds a boto3 client, and schemas
+    # are imported by Alembic's env.py, which must not need object storage.
+    from app.services import storage
+
     data = ListingOut.model_validate(listing)
     if not exact:
         data.lat = round(data.lat, PUBLIC_COORD_DECIMALS)
         data.lng = round(data.lng, PUBLIC_COORD_DECIMALS)
+
+    data.images = [
+        ListingImageOut(
+            id=image.id,
+            position=image.position,
+            url=storage.presigned_get(image.storage_key),
+            thumb_url=storage.presigned_get(image.thumb_key),
+            caption=image.caption,
+        )
+        for image in sorted(images, key=lambda i: i.position)
+    ]
     return data

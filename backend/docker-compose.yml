@@ -15,5 +15,81 @@ services:
       timeout: 5s
       retries: 10
 
+  # Object storage for listing photos, S3 API on port 4566.
+  #
+  # The spec names MinIO, and the application code is plain S3 (boto3), so it
+  # runs against either. LocalStack is here only because MinIO no longer
+  # publishes a pullable public image -- docker.io/minio/minio and
+  # quay.io/minio/minio both refuse anonymous pulls. Swapping back is this
+  # service block plus the two S3 endpoint values on api; nothing in app/
+  # changes.
+  #
+  # Unpinned on purpose: no schema depends on the version, and data lives in
+  # a volume.
+  s3:
+    image: localstack/localstack:4
+    environment:
+      SERVICES: s3
+      # The bucket is created by the API on first upload, not by an init job.
+      PERSISTENCE: "1"
+    ports:
+      - "4566:4566"
+    volumes:
+      - s3data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot: brings the schema to head, then exits 0. The api service waits
+  # for that exit, so `docker compose up` never serves against a stale schema.
+  # Idempotent -- re-running on an up-to-date database is a no-op.
+  migrate:
+    build: .
+    # Same tag as api: one build, one image, two entrypoints.
+    image: smieciarka-backend:latest
+    command: ["alembic", "upgrade", "head"]
+    env_file: .env
+    environment:
+      # Overrides DATABASE_URL from .env, which points at localhost for the
+      # host-side venv workflow. Inside the network the database is "postgres".
+      DATABASE_URL: postgresql+asyncpg://smieciarka:smieciarka@postgres:5432/smieciarka
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    image: smieciarka-backend:latest
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://smieciarka:smieciarka@postgres:5432/smieciarka
+      # Inside the container network the store is "s3"; from the host it is
+      # "localhost". Both are needed: the API uploads over the internal name,
+      # but a presigned URL is signed for the host the client will call, and
+      # SigV4 covers the Host header -- so the two cannot be swapped after
+      # signing. See services/storage.py.
+      S3_ENDPOINT: http://s3:4566
+      S3_PUBLIC_ENDPOINT: http://localhost:4566
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      s3:
+        condition: service_healthy
+    healthcheck:
+      # python, not curl: the slim base image ships no HTTP client.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
 volumes:
   pgdata:
+  s3data:
