@@ -51,6 +51,17 @@ def _use_jina() -> bool:
     return True
 
 
+def listing_text(title: str, description: str | None, image_caption: str | None) -> str:
+    """Build the text a listing is embedded from (spec section 5.1).
+
+    One place for the format, because it is built twice: when the listing is
+    created, and again after a photo upload adds a caption. The two must agree
+    or a reindex would silently change what a listing means.
+    """
+    parts = [title, description, image_caption]
+    return ". ".join(part.strip() for part in parts if part and part.strip())
+
+
 async def embed_passage(text: str) -> list[float]:
     """Embed a listing (the indexed side)."""
     if _use_jina():
