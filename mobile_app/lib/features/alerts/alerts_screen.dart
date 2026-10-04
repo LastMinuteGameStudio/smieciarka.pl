@@ -135,7 +135,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
             return ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: matching.length,
-              itemBuilder: (_, index) => AlertTile(alert: matching[index]),
+              itemBuilder: (_, index) =>
+                  AlertTile(alert: matching[index], onChanged: _refresh),
               separatorBuilder: (_, _) => const SizedBox(height: 12),
             );
           }

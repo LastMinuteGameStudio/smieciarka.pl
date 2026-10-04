@@ -3,18 +3,27 @@ import 'package:go_router/go_router.dart';
 import 'package:uczciwa_cena/core/theme/color_palette.dart';
 import 'package:uczciwa_cena/core/widgets/uc_title.dart';
 
-/// Standard page title, left-aligned. Shows a back button when the route
-/// can be popped, so it replaces the AppBar on every screen.
+/// Standard page title, left-aligned. Replaces the AppBar on every screen.
+///
+/// Shows a back button when the route can be popped, unless [showBack] is
+/// false. Android's system back gesture still works either way.
 class UCPageHeader extends StatelessWidget {
-  const UCPageHeader({super.key, required this.title});
+  const UCPageHeader({
+    super.key,
+    required this.title,
+    this.showBack = true,
+    this.trailing,
+  });
 
   final String title;
+  final bool showBack;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        if (context.canPop())
+        if (showBack && context.canPop())
           IconButton(
             onPressed: () => context.pop(),
             icon: const Icon(
@@ -23,6 +32,7 @@ class UCPageHeader extends StatelessWidget {
             ),
           ),
         Expanded(child: UCTitle(title: title)),
+        ?trailing,
       ],
     );
   }

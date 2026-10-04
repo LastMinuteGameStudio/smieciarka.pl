@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:uczciwa_cena/core/auth/token_storage.dart';
+import 'package:uczciwa_cena/models/user_profile.dart';
 
 class AuthRepository {
   AuthRepository({required this.dio, required this.tokens});
@@ -51,6 +52,27 @@ class AuthRepository {
     final access = await tokens.readAccessToken();
     final refresh = await tokens.readRefreshToken();
     return access != null || refresh != null;
+  }
+
+  /// The signed-in user's profile.
+  Future<UserProfile> fetchProfile() async {
+    final response = await dio.get<Map<String, dynamic>>('/me');
+    return _toProfile(response.data!);
+  }
+
+  /// Switches the subscription flag on the backend and returns the profile.
+  Future<UserProfile> setSubscribed(bool value) async {
+    final response = value
+        ? await dio.post<Map<String, dynamic>>('/subscription')
+        : await dio.delete<Map<String, dynamic>>('/subscription');
+    return _toProfile(response.data!);
+  }
+
+  static UserProfile _toProfile(Map<String, dynamic> body) {
+    return UserProfile(
+      phoneNumber: body['phone_number'] as String,
+      isSubscribed: body['is_subscribed'] as bool,
+    );
   }
 
   Future<void> logout() => tokens.clear();

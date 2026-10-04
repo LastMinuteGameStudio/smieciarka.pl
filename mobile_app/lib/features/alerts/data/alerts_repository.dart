@@ -38,6 +38,9 @@ class AlertsRepository {
     return _toAlert(response.data!);
   }
 
+  /// Removes one of the user's alerts.
+  Future<void> delete(String id) => dio.delete<void>('/filters/$id');
+
   static Alert _toAlert(Map<String, dynamic> json) {
     final lat = json['center_lat'] as num?;
     final lng = json['center_lng'] as num?;

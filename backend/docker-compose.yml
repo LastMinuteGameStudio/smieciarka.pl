@@ -84,7 +84,9 @@ services:
       # http://10.0.2.2:4566 (10.0.2.2 is the emulator's alias for the host)
       # and point api_config.dart at the same host.
       S3_ENDPOINT: http://s3:4566
-      S3_PUBLIC_ENDPOINT: https://s3.wkrynski.dev
+      # Defaults to the demo tunnel. Set S3_PUBLIC_ENDPOINT in the shell or in
+      # .env to the address phones use (LAN IP, or the server's public address).
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-https://s3.wkrynski.dev}
     depends_on:
       postgres:
         condition: service_healthy

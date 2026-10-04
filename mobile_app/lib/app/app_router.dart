@@ -9,7 +9,6 @@ import 'package:uczciwa_cena/features/items/items_screen.dart';
 import 'package:uczciwa_cena/features/items/new_item_screen.dart';
 import 'package:uczciwa_cena/features/profile/profile_screen.dart';
 import 'package:uczciwa_cena/features/splash/splash_screen.dart';
-import 'package:uczciwa_cena/features/subscription/buy_subscription_page.dart';
 import 'package:uczciwa_cena/features/welcome/welcome_screen.dart';
 import 'package:uczciwa_cena/models/alert.dart';
 import 'package:uczciwa_cena/models/item.dart';
@@ -63,10 +62,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.newAlert,
       builder: (_, _) => const NewAlertScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.subscription,
-      builder: (_, _) => const BuySubscriptionPage(),
     ),
   ],
 );

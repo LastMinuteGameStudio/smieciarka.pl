@@ -11,5 +11,4 @@ abstract final class AppRoutes {
   static const alert = '/alert';
   static const newItem = '/items/new';
   static const newAlert = '/alerts/new';
-  static const subscription = '/subscription';
 }
