@@ -54,6 +54,8 @@ class ListingOut(BaseModel):
     created_at: datetime
     expires_at: datetime | None
     images: list[ListingImageOut] = []
+    # True only for the signed-in author's own listings.
+    is_mine: bool = False
 
     class Config:
         from_attributes = True
@@ -71,6 +73,8 @@ def listing_out(listing, *, exact: bool, images=()) -> ListingOut:
     from app.services import storage
 
     data = ListingOut.model_validate(listing)
+    # Every caller passes exact=True only for the author, so it doubles as is_mine.
+    data.is_mine = exact
     if not exact:
         data.lat = round(data.lat, PUBLIC_COORD_DECIMALS)
         data.lng = round(data.lng, PUBLIC_COORD_DECIMALS)

@@ -144,20 +144,18 @@ async def search_listings(
 
 @router.get("/listings/nearby", response_model=list[ListingOut])
 async def listings_nearby(
-    lat: float = Query(...),
-    lng: float = Query(...),
-    radius: int = Query(5000, description="radius in meters"),
+    lat: float | None = Query(None),
+    lng: float | None = Query(None),
+    radius: int | None = Query(None, description="radius in meters; needs lat/lng, omit for no limit"),
     mine: bool = Query(False, description="only the signed-in user's listings"),
     viewer: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
     if mine and viewer is None:
         raise HTTPException(status_code=401, detail="Invalid token")
-    stmt = (
-        select(Listing)
-        .where(Listing.status == ListingStatus.active)
-        .where(_distance_m(lat, lng) <= radius)
-    )
+    stmt = select(Listing).where(Listing.status == ListingStatus.active)
+    if lat is not None and lng is not None and radius is not None:
+        stmt = stmt.where(_distance_m(lat, lng) <= radius)
     if mine:
         stmt = stmt.where(Listing.author_id == viewer.id)
     result = await db.execute(
@@ -212,3 +210,20 @@ async def update_listing_status(
     await db.refresh(listing)
     images = await _images_for([listing.id], db)
     return listing_out(listing, exact=True, images=images.get(listing.id, ()))
+
+
+@router.delete("/listings/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_listing(
+    listing_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft delete: the row stays, but search and nearby only return active listings."""
+    listing = await db.get(Listing, listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if listing.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your listing")
+
+    listing.status = ListingStatus.removed
+    await db.commit()
