@@ -1,5 +1,5 @@
 # UczciwaCena
-
+## HackYeah 2026
 Aplikacja mobilna, która pomaga znaleźć darmowe przedmioty wystawione przy altanach śmietnikowych — zanim trafią na wysypisko.
 
 ## Problem
